@@ -1,4 +1,7 @@
-import uvicorn, asyncio, aiohttp
+import traceback
+import aiohttp
+import asyncio
+import uvicorn
 
 from contextlib import asynccontextmanager
 
@@ -15,7 +18,6 @@ from .src.tenders import (
     get_tender, 
     get_tenders, 
     get_evaluation_report_link, 
-    get_tender2
 )
 
 from .database.helpers import add_tenders_to_db
@@ -28,7 +30,6 @@ async def find_fields(tender_ids: list[str], search_fields: list[str]):
     for tender_id in tender_ids:
         path = f'/src/reports/{tender_id}.pdf'
         found = await search_fields_in_pdf(path, search_fields)
-        print('---- found', found)
         result[tender_id] = (models.TenderDataFromFilesPayload.model_validate(found))
     return result
 
@@ -53,7 +54,6 @@ async def download_reports(tender_links: dict[str, str], session: aiohttp.Client
 async def save_fields_to_redis(tenders_fields: dict[str, models.NonresidentialDataOut]):
     async with redis_client.client() as conn:
         for tender in tenders_fields.values():
-            print('redis', tender.model_dump_json())
             await conn.set(tender.tender_id, tender.model_dump_json())
 
 
@@ -65,10 +65,9 @@ async def _parse_nonresidential(
     print('tenders_ids', tenders_ids)
     file_data = {}
     tenders = {}
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=settings.SSL)) as session:
         for tender_id in tenders_ids:
             data = await get_tender(session, tender_id)
-            # data = await get_tender2(tender_id)
             tender = models.NonresidentialDataValidate.model_validate(data)
             tenders[tender_id] = tender
 
@@ -107,6 +106,7 @@ async def _parse_nonresidential(
             region_name=_file_data.region_name if _file_data else None,
             district_name=_file_data.district_name if _file_data else None,
         )
+        print(tenders[tender_id])
 
     asyncio.create_task(save_fields_to_redis(tenders))
     asyncio.create_task(add_tenders_to_db(tenders))
@@ -115,27 +115,34 @@ async def _parse_nonresidential(
 async def parse_nonresidential(
     search_fields: list[str]
 ):
-    import pprint
-    pp = pprint.PrettyPrinter(indent=4)
-    async with aiohttp.ClientSession() as session:
-        tenders = await get_tenders(
-            session, 
-            settings.PAGENUMBER, 
-            settings.PAGESIZE, 
-            models.TenderTypes.nonresidential.value
-        )
-    entities = tenders.get('entities')
-    for entity in entities:
-        tenders = entity.get('tenders')
-        tenders_ids = []
-        for tender in tenders:
-            if _id := tender.get('id'):
-                tenders_ids.append(str(_id))
-            else:
-                print('-------- ERROR: no id in tender', tender)
-        await _parse_nonresidential(tenders_ids, search_fields)
-        clean_folder('/src/reports')
-        clean_folder('/src/jsons')
+    # TODO: save parsing progress on shutdown to avoid reparse on restart
+    while True:
+        try:
+            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=settings.SSL)) as session:
+                tenders = await get_tenders(
+                    session, 
+                    settings.PAGENUMBER, 
+                    settings.PAGESIZE, 
+                    models.TenderTypes.nonresidential.value
+                )
+            entities = tenders.get('entities')
+            for entity in entities:
+                tenders = entity.get('tenders')
+                tenders_ids = []
+                for tender in tenders:
+                    if _id := tender.get('id'):
+                        tenders_ids.append(str(_id))
+                    else:
+                        print('-------- ERROR: no id in tender', tender)
+                await _parse_nonresidential(tenders_ids, search_fields)
+                clean_folder('/src/reports')
+                clean_folder('/src/jsons')
+            print('parsed nonresidential tenders')
+            print('SLEEP')
+            await asyncio.sleep(60 * 60)
+        except Exception:
+            traceback.print_exc()
+            await asyncio.sleep(60)
 
 
 @asynccontextmanager
@@ -160,11 +167,4 @@ app = FastAPI(
     swagger_ui_parameters={"displayRequestDuration": True}
 )
 app.include_router(v1_router, prefix="/api")
-
-
-if __name__ == '__main__':
-    uvicorn.run(
-        'app.app:app', 
-        port=settings.API_PORT
-    )
 

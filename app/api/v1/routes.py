@@ -24,7 +24,6 @@ async def get_tender_data_by_id(tender_id: str) -> models.NonresidentialDataOut 
     """ 
     Возвращает тендер по ID.
     """
-
     async with redis_client.client() as conn:
         cached_tender = await conn.get(tender_id)
         if cached_tender:
@@ -41,8 +40,6 @@ async def get_tenders_by_ids(
     """ 
     Возвращает тендеры по ID.
     """
-
-    print('tenders_ids', tenders_ids)
     rates_resp = {}
     async with get_db_session() as session:
         rates = await db_get_tenders_by_ids(

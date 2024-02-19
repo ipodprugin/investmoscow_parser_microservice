@@ -34,16 +34,12 @@ async def db_get_tender_by_id(
     session: AsyncSession, 
     tender_id: str,
 ) -> models.NonresidentialDataOut | None:
-    # tenders = await session.scalars(
     tender = select(
         db_models.Tenders,
     ).where(
         db_models.Tenders.tender_id == tender_id
     )
-    # )
-    # tender = tenders.first()
     tender = await session.execute(tender)
-    print('tender', tender)
     if tender:
         return models.NonresidentialDataOut.model_validate(tender)
 

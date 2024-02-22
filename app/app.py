@@ -118,6 +118,7 @@ async def parse_nonresidential(
     # TODO: save parsing progress on shutdown to avoid reparse on restart
     while True:
         try:
+            print('SSL', settings.SSL)
             async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=settings.SSL)) as session:
                 tenders = await get_tenders(
                     session, 
@@ -125,6 +126,7 @@ async def parse_nonresidential(
                     settings.PAGESIZE, 
                     models.TenderTypes.nonresidential.value
                 )
+                print('GOT TENDERS')
             entities = tenders.get('entities')
             for entity in entities:
                 tenders = entity.get('tenders')

@@ -191,8 +191,8 @@ class NonresidentialDataValidate(TenderDataFromFilesPayload):
 
     @computed_field
     def m1_min_price(self) -> float | None:
-        m1_min_price = self.min_price / self.object_area if self.object_area else None
-        return m1_min_price
+        if self.object_area and self.min_price:
+            return self.min_price / self.object_area
 
 
 class NonresidentialDataOut(BaseModel):

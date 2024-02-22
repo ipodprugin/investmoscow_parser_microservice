@@ -24,7 +24,7 @@ services:
     container_name: investmoscow_parser_db
     image: postgres
     ports:
-      - ${DB_PORT}:5432
+      - ${DB_PORT}:${DB_PORT}
     volumes:
       - ./postgres_data:/var/lib/postgres/data
     restart: unless-stopped

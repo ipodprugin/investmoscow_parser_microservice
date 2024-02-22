@@ -128,17 +128,22 @@ async def parse_nonresidential(
                 )
                 print('GOT TENDERS')
             entities = tenders.get('entities')
+            tender = None
             for entity in entities:
-                tenders = entity.get('tenders')
-                tenders_ids = []
-                for tender in tenders:
-                    if _id := tender.get('id'):
-                        tenders_ids.append(str(_id))
-                    else:
-                        print('-------- ERROR: no id in tender', tender)
-                await _parse_nonresidential(tenders_ids, search_fields)
-                clean_folder('/src/reports')
-                clean_folder('/src/jsons')
+                try:
+                    tenders = entity.get('tenders')
+                    tenders_ids = []
+                    for tender in tenders:
+                        if _id := tender.get('id'):
+                            tenders_ids.append(str(_id))
+                        else:
+                            print('-------- ERROR: no id in tender', tender)
+                    await _parse_nonresidential(tenders_ids, search_fields)
+                    clean_folder('/src/reports')
+                    clean_folder('/src/jsons')
+                except Exception:
+                    print('Error while parsing', tender)
+                    traceback.print_exc()
             print('parsed nonresidential tenders')
             print('SLEEP')
             await asyncio.sleep(60 * 60)

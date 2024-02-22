@@ -42,3 +42,4 @@ class Tenders(Base):
 
     lat: orm.Mapped[float] = orm.mapped_column(Float, nullable=True)
     lon: orm.Mapped[float] = orm.mapped_column(Float, nullable=True)
+

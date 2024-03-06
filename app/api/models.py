@@ -26,7 +26,7 @@ class AttachedImage(BaseModel):
 
 
 class ImageInfo(BaseModel):
-    attached_images: List[AttachedImage] = Field(..., alias='attachedImages')
+    attached_images: Annotated[List[AttachedImage], Field(alias='attachedImages')]
 
 
 class ObjectInfoItem(BaseModel):
@@ -35,8 +35,8 @@ class ObjectInfoItem(BaseModel):
 
 
 class ProcedureInfoItem(BaseModel):
-    label: str
-    value: Annotated[str, Field(alias='value')]
+    label: str | None = None
+    value: Annotated[str | None, Field(..., alias='value')] = None
     user_action: Annotated[str | None, Field(..., alias='userAction')] = None
 
 
@@ -86,6 +86,10 @@ class TenderOut(TenderDataFromFilesPayload):
 # -----------------------------------------------------------------------------------------
 
 
+class TenderBase(BaseModel):
+    image_info: Annotated[ImageInfo, Field(alias='imageInfo')]
+
+
 class SubwayStation(BaseModel):
     subwayStationId: Annotated[int | None , Field(..., alias='subwayStationId')] = None
     subwayStationName: Annotated[str | None , Field(..., alias='subwayStationName')] = None
@@ -123,7 +127,7 @@ def extract_square_value(square_value):
 
 
 # TODO: Try to define dields, which is computed
-class NonresidentialDataValidate(TenderDataFromFilesPayload):
+class NonresidentialDataValidate(TenderBase, TenderDataFromFilesPayload):
     tender_id: Annotated[int, Field(alias='tenderId')]
     header_info: Annotated[HeaderInfo2, Field(alias='headerInfo')]
     map_info: Annotated[MapInfo, Field(alias='mapInfo')]
@@ -224,6 +228,23 @@ class TenderTypes(IntEnum):
     parking_space = 30011578
     nonresidential = 30011569
 
+
+# Images
+
+class AttachedImageSnakeCase(BaseModel):
+    tender_id: Annotated[int, Field(alias='tender_id')]
+    is_main_photo: Annotated[bool, Field(alias='is_main_photo')]
+    url: str
+    file_base: Annotated[FileBase, Field(alias='file_base')]
+
+
+class TenderImagesInfo(BaseModel):
+    tender_id: Annotated[int, Field(alias='tender_id')]
+    attached_images: Annotated[list[AttachedImageSnakeCase], Field(alias='attached_images')]
+
+
+class TenderImages(BaseModel):
+    images: list[TenderImagesInfo]
 
 # Ожидаемый формат данных при генерации презентации по нежилым помещениям
 # model = {

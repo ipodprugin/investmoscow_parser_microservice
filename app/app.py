@@ -1,7 +1,6 @@
 import traceback
 import aiohttp
 import asyncio
-import uvicorn
 
 from contextlib import asynccontextmanager
 
@@ -14,13 +13,14 @@ from .api.v1.routes import router as v1_router
 
 from .src.pdf import search_fields_in_pdf
 from .src.utils import clean_folder
+from .src.images import upload_images, process_images
 from .src.tenders import (
     get_tender, 
     get_tenders, 
     get_evaluation_report_link, 
 )
 
-from .database.helpers import add_tenders_to_db
+from .database.handlers.tenders import db_add_tenders
 from .database.initdb import init_db
 from .redis_client import redis_client
 
@@ -61,15 +61,19 @@ async def save_fields_to_redis(tenders_fields: dict[str, models.NonresidentialDa
 async def _parse_nonresidential(
     tenders_ids: list[str], 
     search_fields: list[str]
-):
-    print('tenders_ids', tenders_ids)
+) -> dict:
     file_data = {}
     tenders = {}
+    tenders_images = {}
     async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=settings.SSL)) as session:
         for tender_id in tenders_ids:
             data = await get_tender(session, tender_id)
             tender = models.NonresidentialDataValidate.model_validate(data)
             tenders[tender_id] = tender
+
+            images = tender.image_info.model_dump()
+            images['tender_id'] = tender.tender_id
+            tenders_images[tender_id] = images
 
             evaluation_report_link = await get_evaluation_report_link(data)
             if evaluation_report_link:
@@ -109,16 +113,18 @@ async def _parse_nonresidential(
         print(tenders[tender_id])
 
     asyncio.create_task(save_fields_to_redis(tenders))
-    asyncio.create_task(add_tenders_to_db(tenders))
+    asyncio.create_task(db_add_tenders(tenders))
+
+    return tenders_images
 
 
 async def parse_nonresidential(
     search_fields: list[str]
 ):
     # TODO: save parsing progress on shutdown to avoid reparse on restart
+    # TODO: implement autoremove tenders from db that term expired
     while True:
         try:
-            print('SSL', settings.SSL)
             async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=settings.SSL)) as session:
                 tenders = await get_tenders(
                     session, 
@@ -126,8 +132,9 @@ async def parse_nonresidential(
                     settings.PAGESIZE, 
                     models.TenderTypes.nonresidential.value
                 )
-                print('GOT TENDERS')
+                print(f'GOT TENDERS ON {settings.PAGENUMBER = } WITH {settings.PAGESIZE = }')
             entities = tenders.get('entities')
+            entities_count = tenders.get('totalCount')
             tender = None
             for entity in entities:
                 try:
@@ -138,7 +145,10 @@ async def parse_nonresidential(
                             tenders_ids.append(str(_id))
                         else:
                             print('-------- ERROR: no id in tender', tender)
-                    await _parse_nonresidential(tenders_ids, search_fields)
+                    tenders_images = await _parse_nonresidential(tenders_ids, search_fields)
+                    tenders_images = models.TenderImages(**tenders_images)
+                    asyncio.create_task(upload_images(folder='nonresidential', tenders=tenders_images.images))
+                    asyncio.create_task(process_images(basefolder='nonresidential', tenders_ids=tenders_ids.copy()))
                     clean_folder('/src/reports')
                     clean_folder('/src/jsons')
                 except Exception:
@@ -150,6 +160,44 @@ async def parse_nonresidential(
         except Exception:
             traceback.print_exc()
             await asyncio.sleep(60)
+
+
+# async def parse_parking_spaces():
+#     # TODO: save parsing progress on shutdown to avoid reparse on restart
+#     # TODO: implement autoremove tenders from db that term expired
+#     while True:
+#         try:
+#             async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=settings.SSL)) as session:
+#                 tenders = await get_tenders(
+#                     session, 
+#                     settings.PAGENUMBER, 
+#                     settings.PAGESIZE, 
+#                     models.TenderTypes.parking_space.value
+#                 )
+#                 print(f'GOT TENDERS ON {settings.PAGENUMBER = } WITH {settings.PAGESIZE = }')
+#             entities = tenders.get('entities')
+#             tender = None
+#             for entity in entities:
+#                 try:
+#                     tenders = entity.get('tenders')
+#                     tenders_ids = []
+#                     for tender in tenders:
+#                         if _id := tender.get('id'):
+#                             tenders_ids.append(str(_id))
+#                         else:
+#                             print('-------- ERROR: no id in tender', tender)
+#                     await _parse_nonresidential(tenders_ids, search_fields)
+#                     clean_folder('/src/reports')
+#                     clean_folder('/src/jsons')
+#                 except Exception:
+#                     print('Error while parsing', tender)
+#                     traceback.print_exc()
+#             print('parsed nonresidential tenders')
+#             print('SLEEP')
+#             await asyncio.sleep(60 * 60)
+#         except Exception:
+#             traceback.print_exc()
+#             await asyncio.sleep(60)
 
 
 @asynccontextmanager

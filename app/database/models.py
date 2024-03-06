@@ -3,6 +3,7 @@ from sqlalchemy import (
     String,
     Float,
     DateTime,
+    ARRAY,
     orm
 )
 
@@ -42,4 +43,6 @@ class Tenders(Base):
 
     lat: orm.Mapped[float] = orm.mapped_column(Float, nullable=True)
     lon: orm.Mapped[float] = orm.mapped_column(Float, nullable=True)
+
+    images_links: orm.Mapped[list[str]] = orm.mapped_column(ARRAY(String), nullable=True)
 

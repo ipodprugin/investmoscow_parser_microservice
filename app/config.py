@@ -19,12 +19,18 @@ class Settings(BaseSettings):
     REDIS_PORT: int
     SSL: bool = False
 
+    YADISK_OAUTH_TOKEN: str
+
+    # defaults
     DB_URL: str
+
     GET_PARKPLACE_REGEX: Pattern = re.compile(r"(м/м №|м/м|мм)\s*(.+)")
     GET_PRICE_REGEX: Pattern = re.compile(r"\d[\d ]+,?\d+")
     GET_SQUARE_VALUE_REGEX: Pattern = re.compile(r"\d+,?\d*")
+
     DATETIME_WITH_SEC_FORMAT: str = '%d.%m.%Y %H:%M:%S'
     DATETIME_FORMAT: str = '%d.%m.%Y %H:%M'
+
     PAGENUMBER: int = 1
     PAGESIZE: int = 20
 

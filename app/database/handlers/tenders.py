@@ -1,7 +1,7 @@
-from . import models as db_models
-from ..api import models
+from .. import models as db_models
+from ..session import get_db_session
 
-from .session import get_db_session
+from app.api import models
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -23,7 +23,7 @@ async def _add_tender_data_to_db(
     )
 
 
-async def add_tenders_to_db(tenders: dict[str, models.NonresidentialDataOut]) -> None:
+async def db_add_tenders(tenders: dict[str, models.NonresidentialDataOut]) -> None:
     async with get_db_session() as session:
         for tender in tenders.values():
             await _add_tender_data_to_db(session, tender)

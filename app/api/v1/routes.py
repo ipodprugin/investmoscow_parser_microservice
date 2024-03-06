@@ -13,7 +13,7 @@ from fastapi import (
 
 from app.api import models
 from app.database.session import get_db_session
-from app.database.helpers import db_get_tenders_by_ids, db_get_tender_by_id
+from app.database.handlers.tenders import db_get_tenders_by_ids, db_get_tender_by_id
 from app.redis_client import redis_client
 
 router = APIRouter(prefix="/v1", tags=["v1"])

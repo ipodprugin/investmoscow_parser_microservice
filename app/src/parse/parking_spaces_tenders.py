@@ -115,6 +115,7 @@ async def parse_parking_spaces():
                     except Exception:
                         print('Error while parsing', tender)
                         traceback.print_exc()
+                pagenumber += 1
                 await asyncio.sleep(60 * 5)
         except Exception:
             traceback.print_exc()

@@ -152,7 +152,6 @@ async def get_images_share_links(session: aiohttp.ClientSession, basefolder: str
 
 
 async def process_images(basefolder: str, tender_model, tenders_images: TenderImages, tenders_ids: list[str]):
-    print('PROCESS IMAGES FOR TENDERS', tenders_ids) 
     DISK_AUTH_HEADERS = {'accept': 'application/json', 'Authorization': 'OAuth %s' % settings.YADISK_OAUTH_TOKEN}
     await upload_images(folder=basefolder, tenders=tenders_images.images)
 

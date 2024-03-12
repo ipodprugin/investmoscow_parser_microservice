@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.dialects.postgresql import insert
 
-from pydantic import BaseModel
 
 async def _add_tender_data_to_db(
     session: AsyncSession, 
@@ -15,13 +14,6 @@ async def _add_tender_data_to_db(
     tender: models.NonresidentialDataOut
 ) -> None:
     await session.execute(
-        # insert(db_models.NonresidentialTenders).values(
-        #     **tender.model_dump(),
-        # ).on_conflict_do_update(
-        #     index_elements=[db_models.NonresidentialTenders.tender_id],
-        #     index_where=db_models.NonresidentialTenders.tender_id == tender.tender_id,
-        #     set_={**tender.model_dump()}
-        # )
         insert(tender_model).values(
             **tender.model_dump(),
         ).on_conflict_do_update(
@@ -35,7 +27,6 @@ async def _add_tender_data_to_db(
 async def db_add_tenders(tender_model, tenders: dict[str, models.NonresidentialDataOut]) -> None:
     async with get_db_session() as session:
         for tender in tenders.values():
-            print('------------- TENDER', tender)
             await _add_tender_data_to_db(session, tender_model, tender)
         await session.commit()
 

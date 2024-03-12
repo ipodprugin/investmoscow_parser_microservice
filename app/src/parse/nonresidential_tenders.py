@@ -126,6 +126,8 @@ async def parse_nonresidential(
             entities = tenders.get('entities')
             if not entities:
                 pagenumber = settings.PAGENUMBER
+                print('parsed nonresidential tenders')
+                print('SLEEP')
                 await asyncio.sleep(60 * 60 * 12)
             else:
                 print(f'GOT TENDERS ON {pagenumber = } WITH {settings.PAGESIZE = }')
@@ -155,8 +157,7 @@ async def parse_nonresidential(
                     except Exception:
                         print('Error while parsing', tender)
                         traceback.print_exc()
-                print('parsed nonresidential tenders')
-                print('SLEEP')
+                pagenumber += 1
                 await asyncio.sleep(60 * 60)
         except Exception:
             traceback.print_exc()

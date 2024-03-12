@@ -1,4 +1,3 @@
-from .. import models as db_models
 from ..session import get_db_session
 
 from sqlalchemy import update
@@ -6,8 +5,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 
 async def db_add_images_links(tender_model, images_links: dict[str, list[str]]) -> None:
-    print('------------ ADD IMAGES LINKS TO DB --------------')
-    print('------- images links', images_links)
     async with get_db_session() as session:
         for tender_id, links in images_links.items():
             await _db_add_tender_images_links(session, tender_model, tender_id, links)

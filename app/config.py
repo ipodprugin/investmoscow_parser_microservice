@@ -9,6 +9,7 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     # .env
     API_PORT: int
+    API_HOST: str
 
     POSTGRES_DB: str
     POSTGRES_USER: str

@@ -22,7 +22,7 @@ async def lifespan(
     ]
 
     await init_db()
-    # asyncio.create_task(parse_nonresidential(search_fields))
+    asyncio.create_task(parse_nonresidential(search_fields))
     asyncio.create_task(parse_parking_spaces())
     yield
 

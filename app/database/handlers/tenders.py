@@ -7,26 +7,36 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.dialects.postgresql import insert
 
+from pydantic import BaseModel
 
 async def _add_tender_data_to_db(
     session: AsyncSession, 
+    tender_model,
     tender: models.NonresidentialDataOut
 ) -> None:
     await session.execute(
-        insert(db_models.Tenders).values(
+        # insert(db_models.NonresidentialTenders).values(
+        #     **tender.model_dump(),
+        # ).on_conflict_do_update(
+        #     index_elements=[db_models.NonresidentialTenders.tender_id],
+        #     index_where=db_models.NonresidentialTenders.tender_id == tender.tender_id,
+        #     set_={**tender.model_dump()}
+        # )
+        insert(tender_model).values(
             **tender.model_dump(),
         ).on_conflict_do_update(
-            index_elements=[db_models.Tenders.tender_id],
-            index_where=db_models.Tenders.tender_id == tender.tender_id,
+            index_elements=[tender_model.tender_id],
+            index_where=tender_model.tender_id == tender.tender_id,
             set_={**tender.model_dump()}
         )
     )
 
 
-async def db_add_tenders(tenders: dict[str, models.NonresidentialDataOut]) -> None:
+async def db_add_tenders(tender_model, tenders: dict[str, models.NonresidentialDataOut]) -> None:
     async with get_db_session() as session:
         for tender in tenders.values():
-            await _add_tender_data_to_db(session, tender)
+            print('------------- TENDER', tender)
+            await _add_tender_data_to_db(session, tender_model, tender)
         await session.commit()
 
 
@@ -35,9 +45,9 @@ async def db_get_tender_by_id(
     tender_id: str,
 ) -> models.NonresidentialDataOut | None:
     tender = select(
-        db_models.Tenders,
+        db_models.NonresidentialTenders,
     ).where(
-        db_models.Tenders.tender_id == tender_id
+        db_models.NonresidentialTenders.tender_id == tender_id
     )
     tender = await session.execute(tender)
     if tender:
@@ -49,9 +59,9 @@ async def db_get_tenders_by_ids(
     tenders_ids: list[str] | None = None,
 ) -> list[models.TenderOut] | None:
     tenders = select(
-        db_models.Tenders,
+        db_models.NonresidentialTenders,
     ).where(
-        db_models.Tenders.tender_id in tenders_ids if tenders_ids else True,
+        db_models.NonresidentialTenders.tender_id in tenders_ids if tenders_ids else True,
     )
     tenders = await session.execute(tenders)
     if tenders:

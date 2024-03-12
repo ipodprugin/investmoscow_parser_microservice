@@ -1,8 +1,6 @@
 import aiohttp
 import json
 
-from ..api.models import Tender
-
 
 async def get_tenders(session: aiohttp.ClientSession, page_number, page_size, objtype_id):
     payload = """
@@ -68,13 +66,13 @@ async def get_tender(session: aiohttp.ClientSession, tender_id: str):
     async with session.get(url, headers=headers) as response:
         data = await response.json()
 
-    with open(f'/src/jsons/{tender_id}.json', 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+    # with open(f'/src/jsons/{tender_id}.json', 'w', encoding='utf-8') as f:
+    #     json.dump(data, f, ensure_ascii=False, indent=4)
 
     return data
 
 
-async def get_tender2(tender_id: int):
+async def get_tender_from_file(tender_id: int):
     with open(f'/src/jsons/{tender_id}.json', 'r', encoding='utf-8') as f:
         tender = json.load(f)
     return tender
@@ -112,4 +110,22 @@ async def get_evaluation_report_link(tender_data: dict):
         return None
 
     return evaluation_report_doclink
+
+
+def find_smallest_area_tender(tenders):
+    tender_index = 0
+    for index, tender in enumerate(tenders):
+        min_area = tender.get('objectArea', None)
+        if min_area:
+            tender_index = index
+            break
+    else:
+        return tender_index
+    for index, tender in enumerate(tenders[tender_index:]):
+        tender_area = tender.get('objectArea', None)
+        if tender_area:
+            if tender['objectArea'] < min_area:
+                min_area = tender['objectArea']
+                tender_index = index
+    return tender_index
 

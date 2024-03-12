@@ -1,16 +1,8 @@
 import aiohttp
-import asyncio
-import json
 
 from ..config import settings
 from ..api.models import TenderImages, TenderImagesInfo
 from ..database.handlers.images import db_add_images_links
-
-
-def get_tenders_list():
-    with open('photos.json', 'r', encoding='utf-8') as f:
-        images = TenderImages.model_validate_json(f.read())
-    return images.images
 
 
 async def get_drive_info(session):
@@ -42,11 +34,9 @@ async def publish_item(session, path: str):
 
 async def publish_items(session, path: str):
     status, response = await get_item_info(session=session, path=path)
-    print(status, response)
     if status == 200:
         for image in response['_embedded']['items']:
             status, response = await publish_item(session=session, path=f'{path}/{image["name"]}')
-            print(status, response)
 
 
 async def create_folder(session, path):
@@ -84,15 +74,8 @@ async def upload_files(session, basepath, images):
         if status == 202:
             image['status_url'] = response['href']
             status_links.append(image)
-            #     # 'url': image.url,
-            #     # 'folder': path,
-            #     # 'name': image.file_base.name,
-            #     'image': image,
-            #     'status_url': response['href'],
-            # })
         else:
             upload_error.append(image)
-        print('upload', response, status)
     return status_links, upload_error
 
 
@@ -108,12 +91,10 @@ async def check_images_upload_status(session, images_status_links):
     return {'attached_images': images_w_failed_status}
 
 
-async def upload_images(folder: str, tenders: list[TenderImagesInfo] | None = None):
+async def upload_images(folder: str, tenders: list[TenderImagesInfo]):
     basepath = f'app:/{folder}'
     DISK_AUTH_HEADERS = {'accept': 'application/json', 'Authorization': 'OAuth %s' % settings.YADISK_OAUTH_TOKEN}
 
-    if not tenders:
-        tenders = get_tenders_list()
     images_status_links = []
     async with aiohttp.ClientSession(headers=DISK_AUTH_HEADERS) as session:
         status, response = await create_folder(session, basepath)
@@ -140,45 +121,44 @@ async def upload_images(folder: str, tenders: list[TenderImagesInfo] | None = No
                         return
                     status_links, upload_error = await upload_files(session, basepath, tender.model_dump())
                     images_status_links.append({'attached_images': status_links})
-        print(images_status_links)
         
-        for i in range(2):
+        for _ in range(2):
             failed_images = await check_images_upload_status(session, images_status_links)
             if not failed_images:
                 break
-            with open(f'failed_{i}.json', 'w', encoding='utf-8') as f:
-                f.write(json.dumps(failed_images, ensure_ascii=False, indent=4))
             status_links, upload_error = await upload_files(session, basepath, failed_images)
             images_status_links = [{'attached_images': status_links}]
-
-            
-    with open('disk.json', 'w', encoding='utf-8') as f:
-        f.write(json.dumps(response, ensure_ascii=False, indent=4))
 
 
 async def publish_images(session: aiohttp.ClientSession, basefolder: str, tenders_ids: list[str]):
     for tender_id in tenders_ids:
-        foldername = f'{basefolder}/{tender_id[0]}'
+        foldername = f'{basefolder}/{tender_id}'
         await publish_items(session=session, path='app:/' + foldername)
 
 
 async def get_images_share_links(session: aiohttp.ClientSession, basefolder: str, tenders_ids: list[str]) -> dict[str, list[str]]:
     images_links = {}
     for tender_id in tenders_ids:
-        foldername = f'{basefolder}/{tender_id[0]}'
+        foldername = f'{basefolder}/{tender_id}'
         status, response = await get_item_info(session=session, path='app:/' + foldername)
         if status == 200:
             _images = []
             for image in response['_embedded']['items']:
-                _images.append(image['public_url'])
+                url = image['public_url']
+                if url:
+                    _images.append(url.replace('yadi.sk', 'disk.yandex.ru'))
             images_links[tender_id] = _images
     return images_links
 
 
-async def process_images(basefolder: str, tenders_ids: list[str]):
+async def process_images(basefolder: str, tender_model, tenders_images: TenderImages, tenders_ids: list[str]):
+    print('PROCESS IMAGES FOR TENDERS', tenders_ids) 
     DISK_AUTH_HEADERS = {'accept': 'application/json', 'Authorization': 'OAuth %s' % settings.YADISK_OAUTH_TOKEN}
+    await upload_images(folder=basefolder, tenders=tenders_images.images)
+
     async with aiohttp.ClientSession(headers=DISK_AUTH_HEADERS) as session:
         await publish_images(session, basefolder, tenders_ids)
         images_links = await get_images_share_links(session, basefolder, tenders_ids)
-        await db_add_images_links(images_links)
+        if images_links:
+            await db_add_images_links(tender_model, images_links)
 

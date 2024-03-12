@@ -86,9 +86,6 @@ class TenderOut(TenderDataFromFilesPayload):
 # -----------------------------------------------------------------------------------------
 
 
-class TenderBase(BaseModel):
-    image_info: Annotated[ImageInfo, Field(alias='imageInfo')]
-
 
 class SubwayStation(BaseModel):
     subwayStationId: Annotated[int | None , Field(..., alias='subwayStationId')] = None
@@ -104,6 +101,48 @@ class HeaderInfo2(BaseModel):
 class MapInfo(BaseModel):
     coords: Annotated[Coords | None, Field(..., alias='coords')] = None
     price: Annotated[float | None, Field(..., alias='price')] = None
+
+
+class TenderBase(BaseModel):
+    tender_id: Annotated[int, Field(alias='tenderId')]
+    image_info: Annotated[ImageInfo, Field(alias='imageInfo')]
+    header_info: Annotated[HeaderInfo2, Field(alias='headerInfo')]
+    map_info: Annotated[MapInfo, Field(alias='mapInfo')]
+    procedure_info: Annotated[List[ProcedureInfoItem], Field(alias='procedureInfo')]
+    object_info: Annotated[List[ObjectInfoItem], Field(alias='objectInfo')]
+
+    @computed_field
+    def investmoscow_url(self) -> str:
+        return 'https://investmoscow.ru/tenders/tender/' + str(self.tender_id)
+
+    @computed_field
+    def deposit(self) -> float | None:
+        deposit = list(filter(lambda x: x.label == 'Размер задатка', self.procedure_info))
+        return extract_price(deposit[0].value) if deposit else None
+
+    @computed_field
+    def form(self) -> str | None:
+        form = list(filter(lambda x: x.label == 'Форма проведения', self.procedure_info))
+        return form[0].value if form else None
+
+    @computed_field
+    def floor(self) -> str | None:
+        floor = list(filter(lambda x: x.label == 'Этаж', self.object_info))
+        return floor[0].value if floor else None
+
+    @computed_field
+    def applications_enddate(self) -> datetime | None:
+        applications_enddate = list(filter(lambda x: x.label == 'Дата окончания приёма заявок', self.procedure_info))
+        return datetime.strptime(applications_enddate[0].value, settings.DATETIME_WITH_SEC_FORMAT) if applications_enddate else None
+
+    @computed_field
+    def start_price(self) -> float | None:
+        return self.map_info.price if self.map_info.price else self.deposit * 2
+
+    @computed_field
+    def object_area(self) -> float | None:
+        object_area = extract_square_value(self.header_info.land_area)
+        return object_area if object_area else None
 
 
 def extract_price(price):
@@ -126,47 +165,27 @@ def extract_square_value(square_value):
     return 0
 
 
+class ParkingSpacesDataValidate(TenderBase):
+
+    @computed_field
+    def parking_type(self) -> str | None:
+        parking_type = list(filter(lambda x: x.label == 'Тип парковки', self.object_info))
+        return parking_type[0].value if parking_type else None
+
+    @computed_field
+    def parking_place(self) -> str | None:
+        parking_place = list(filter(lambda x: x.label == 'Расположение', self.object_info))
+        parking_place = settings.GET_PARKPLACE_REGEX.findall(parking_place[0].value)
+        return parking_place[0][-1] if parking_place else None
+
+
 # TODO: Try to define dields, which is computed
 class NonresidentialDataValidate(TenderBase, TenderDataFromFilesPayload):
-    tender_id: Annotated[int, Field(alias='tenderId')]
-    header_info: Annotated[HeaderInfo2, Field(alias='headerInfo')]
-    map_info: Annotated[MapInfo, Field(alias='mapInfo')]
-    procedure_info: Annotated[List[ProcedureInfoItem], Field(alias='procedureInfo')]
-    object_info: Annotated[List[ObjectInfoItem], Field(alias='objectInfo')]
-
-    @computed_field
-    def url(self) -> str:
-        return 'https://investmoscow.ru/tenders/tender/' + str(self.tender_id)
-
-    # deposit, form и floor вынести в базовый класс. Они относятся и к парковочным местам
-    @computed_field
-    def deposit(self) -> float | None:
-        deposit = list(filter(lambda x: x.label == 'Размер задатка', self.procedure_info))
-        return extract_price(deposit[0].value) if deposit else None
-
-    @computed_field
-    def form(self) -> str | None:
-        form = list(filter(lambda x: x.label == 'Форма проведения', self.procedure_info))
-        return form[0].value if form else None
-
-    @computed_field
-    def floor(self) -> str | None:
-        floor = list(filter(lambda x: x.label == 'Этаж', self.object_info))
-        return floor[0].value if floor else None
 
     @computed_field
     def tendering(self) -> datetime | None:
         tendering = list(filter(lambda x: x.label == 'Проведение торгов', self.procedure_info))
         return datetime.strptime(tendering[0].value, settings.DATETIME_FORMAT) if tendering else None
-
-    @computed_field
-    def applications_enddate(self) -> datetime | None:
-        applications_enddate = list(filter(lambda x: x.label == 'Дата окончания приёма заявок', self.procedure_info))
-        return datetime.strptime(applications_enddate[0].value, settings.DATETIME_WITH_SEC_FORMAT) if applications_enddate else None
-
-    @computed_field
-    def start_price(self) -> float | None:
-        return self.map_info.price if self.map_info.price else self.deposit * 2
 
     @computed_field
     def auction_step(self) -> float | None:
@@ -184,11 +203,6 @@ class NonresidentialDataValidate(TenderBase, TenderDataFromFilesPayload):
         return extract_price(min_price[0].value) if min_price else None
 
     @computed_field
-    def object_area(self) -> float | None:
-        object_area = extract_square_value(self.header_info.land_area)
-        return object_area if object_area else None
-
-    @computed_field
     def m1_start_price(self) -> float | None:
         m1_start_price = self.deposit * 2 / self.object_area if self.object_area else None
         return m1_start_price
@@ -201,6 +215,7 @@ class NonresidentialDataValidate(TenderBase, TenderDataFromFilesPayload):
 
 class NonresidentialDataOut(BaseModel):
     tender_id: str
+    investmoscow_url: str | None = None
     address: str | None = None 
     subway_stations: str | None = None 
     region_name: str | None = None 
@@ -222,6 +237,24 @@ class NonresidentialDataOut(BaseModel):
     entrance_type: str | None = None
     windows: str | None = None
     ceilings: str | None = None
+
+
+class ParkingSpacesDataOut(BaseModel):
+    tender_id: str
+    investmoscow_url: str | None = None
+    address: str | None = None 
+    subway_stations: str | None = None 
+    region_name: str | None = None 
+    district_name: str | None = None 
+    object_area: float | None = None
+    floor: str | None = None
+    applications_enddate: datetime | None = None
+    deposit: float | None = None
+    start_price: float | None = None 
+    procedure_form: str | None = None
+    parking_type: str | None = None
+    parking_place: str | None = None
+    count: int | None = None
 
 
 class TenderTypes(IntEnum):
@@ -246,34 +279,3 @@ class TenderImagesInfo(BaseModel):
 class TenderImages(BaseModel):
     images: list[TenderImagesInfo]
 
-# Ожидаемый формат данных при генерации презентации по нежилым помещениям
-# model = {
-#     # 1 slide
-#     "address": tender.address,
-#     "subway_stations": tender.subway_stations,
-#     "region_name": tender.region_name,
-#     "district_name": tender.district_name,
-#     "object_area": tender.object_area,
-#     "floor": tender.floor,
-#     "entrance_type": None,
-#     "windows": None,
-#     "ceilings": None,
-#
-#     # 2 slide
-#     "start_price": tender.start_price,
-#     "min_price": tender.min_price,
-#     "auction_step": tender.auction_step,
-#     "price_decrease_step": tender.price_decrease_step,
-#
-#     "m1_start_price": tender.m1_start_price,
-#     "m1_min_price": tender.m1_min_price,
-#
-#     "applications_enddate": tender.applications_enddate,
-#     "tendering": tender.tendering,
-#     "deposit": tender.deposit,
-#
-#     # additional information not displayed in the presentation
-#     "procedure_form": tender.procedure_form,
-#     "lat": tender.lat,
-#     "lon": tender.lon
-# }

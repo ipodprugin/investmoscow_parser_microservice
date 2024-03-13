@@ -49,3 +49,7 @@ async def get_tenders_by_ids(
         rates_resp = rates
     return rates_resp
 
+
+@router.delete("/tender", status_code=status.HTTP_200_OK)
+async def delete_expired_tenders():
+    ...

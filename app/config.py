@@ -22,6 +22,9 @@ class Settings(BaseSettings):
 
     YADISK_OAUTH_TOKEN: str
 
+    PARKING_SPACES_FOLDERNAME: str = 'parking_spaces'
+    NONRESIDENTIAL_FOLDERNAME: str = 'nonresidential'
+
     # defaults
     DB_URL: str
 
@@ -34,6 +37,14 @@ class Settings(BaseSettings):
 
     PAGENUMBER: int = 1
     PAGESIZE: int = 20
+
+    SEARCH_FIELDS: list[str] = [
+        'Тип входа',
+        'Наличие окон и их размер',
+        'Высота потолков, м',
+        'Округ города Москвы',
+        'Муниципальный район',
+    ]
 
 settings = Settings()
 

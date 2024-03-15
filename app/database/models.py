@@ -25,7 +25,7 @@ class NonresidentialTenders(Base):
     district_name: orm.Mapped[str] = orm.mapped_column(String, nullable=True)
     subway_stations: orm.Mapped[str] = orm.mapped_column(String, nullable=True)
 
-    object_area: orm.Mapped[float] = orm.mapped_column(Float, nullable=False)
+    object_area: orm.Mapped[float] = orm.mapped_column(Float, nullable=True)
     deposit: orm.Mapped[float] = orm.mapped_column(Float, nullable=True)
     start_price: orm.Mapped[float] = orm.mapped_column(Float, nullable=True)
     m1_start_price: orm.Mapped[float] = orm.mapped_column(Float, nullable=True)
@@ -67,8 +67,8 @@ class ParkingSpacesTenders(Base):
     floor: orm.Mapped[str] = orm.mapped_column(String, nullable=True)
     parking_type: orm.Mapped[str] = orm.mapped_column(String, nullable=True)
     parking_place: orm.Mapped[str] = orm.mapped_column(String, nullable=True)
-    object_area: orm.Mapped[float] = orm.mapped_column(Float, nullable=False)
-    count: orm.Mapped[int] = orm.mapped_column(Integer, nullable=False)
+    object_area: orm.Mapped[float] = orm.mapped_column(Float, nullable=True)
+    count: orm.Mapped[int] = orm.mapped_column(Integer, nullable=True)
 
     images_links: orm.Mapped[list[str]] = orm.mapped_column(ARRAY(String), nullable=True)
 

@@ -10,3 +10,12 @@ def clean_folder(folder):
                 shutil.rmtree(file_path)
         except Exception as e:
             print('Failed to delete %s. Reason: %s' % (file_path, e))
+
+
+def delete_files(folder: str, filesnames: list[str], extension: str | None = None):
+    for filename in filesnames:
+        file_path = f'{os.path.join(folder, filename)}{extension}'
+        try:
+            os.unlink(file_path)
+        except Exception as e:
+            print('Failed to delete %s. Reason: %s' % (file_path, e))

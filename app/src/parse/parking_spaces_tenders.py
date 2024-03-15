@@ -1,14 +1,14 @@
-import traceback
 import asyncio
 import aiohttp
 
 from app.api import models
 
 from app.config import settings
+from app.logger import logger
 
 from app.database.handlers.tenders import db_add_tenders
 
-from app.src.utils import clean_folder
+from app.src.utils import delete_files
 from app.src.images import process_images
 from app.src.tenders import (
     get_tender,
@@ -61,6 +61,7 @@ async def _parse_parking_spaces(
 
 async def parse_parking_spaces():
     pagenumber = settings.PAGENUMBER
+    tenders_ids = []
     while True:
         try:
             async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=settings.SSL)) as session:
@@ -72,12 +73,10 @@ async def parse_parking_spaces():
                 )
             entities = tenders.get('entities')
             if not entities:
-                pagenumber = settings.PAGENUMBER
-                print('parsed parking spaces tenders')
-                print('SLEEP')
-                await asyncio.sleep(60 * 60 * 12)
+                logger.info('Ended parsing parking spaces tenders.')
+                return
             else:
-                print(f'GOT TENDERS ON {pagenumber = } WITH {settings.PAGESIZE = }')
+                logger.info(f'got parking spaces tenders on {pagenumber = } with {settings.PAGESIZE = }')
                 tender = None
                 for entity in entities:
                     object_address = entity['objectAddress']
@@ -94,6 +93,7 @@ async def parse_parking_spaces():
                             region_name = tender['regionName']
                             district_name = tender['districtName']
                             _id = str(tender.get('id'))
+                            tenders_ids.append(_id)
                             tenders_images = await _parse_parking_spaces(
                                 [_id],
                                 object_address, 
@@ -104,20 +104,29 @@ async def parse_parking_spaces():
                             tenders_images = models.TenderImages(**tenders_images)
                             asyncio.create_task(
                                 process_images(
-                                    basefolder='parking_spaces2', 
+                                    basefolder=settings.PARKING_SPACES_FOLDERNAME,
                                     tender_model=dbmodels.ParkingSpacesTenders,
                                     tenders_images=tenders_images, 
                                     tenders_ids=[_id], 
                                 )
                             )
-                            clean_folder('/src/reports')
-                            clean_folder('/src/jsons')
-                    except Exception:
-                        print('Error while parsing', tender)
-                        traceback.print_exc()
+                            # clean_folder('/src/reports')
+                            # clean_folder('/src/jsons')
+                    except Exception as e:
+                        logger.exception(f'Exception while parsing {tender}')
                 pagenumber += 1
+                delete_files(
+                    folder='/src/reports',
+                    filesnames=tenders_ids,
+                    extension='.pdf'
+                )
+                delete_files(
+                    folder='/src/jsons',
+                    filesnames=tenders_ids,
+                    extension='.json'
+                )
                 await asyncio.sleep(60 * 5)
-        except Exception:
-            traceback.print_exc()
+        except Exception as e:
+            logger.exception(f'Exception while parsing')
             await asyncio.sleep(60)
 

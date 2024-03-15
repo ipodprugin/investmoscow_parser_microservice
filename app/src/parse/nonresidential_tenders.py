@@ -1,17 +1,16 @@
-import traceback
 import asyncio
 import aiohttp
 
 from app.api import models
 
 from app.config import settings
+from app.logger import logger
 
 from app.database.handlers.tenders import db_add_tenders
 
 from app.src.pdf import search_fields_in_pdf
-from app.src.utils import clean_folder
+from app.src.utils import delete_files
 from app.src.images import process_images
-from app.src.common import save_fields_to_redis
 from app.src.tenders import (
     get_tender,
     get_tenders,
@@ -69,7 +68,7 @@ async def _parse_nonresidential(
             if evaluation_report_link:
                 file_data[tender_id] = evaluation_report_link
             else:
-                print(f"can't get evaluation report link for tender {tender_id}")
+                logger.error(f"can't get evaluation report link for tender {tender_id}")
         await download_reports(file_data, session)
 
     file_data = await find_fields(tender_ids=list(file_data.keys()), search_fields=search_fields)
@@ -102,7 +101,6 @@ async def _parse_nonresidential(
         )
         print(tenders[tender_id])
 
-    # asyncio.create_task(save_fields_to_redis(tenders))
     asyncio.create_task(db_add_tenders(dbmodels.NonresidentialTenders, tenders))
 
     return {'images': tenders_images}
@@ -125,12 +123,10 @@ async def parse_nonresidential(
                 )
             entities = tenders.get('entities')
             if not entities:
-                pagenumber = settings.PAGENUMBER
-                print('parsed nonresidential tenders')
-                print('SLEEP')
-                await asyncio.sleep(60 * 60 * 12)
+                logger.info('Ended parsing nonresidential tenders.')
+                return
             else:
-                print(f'GOT TENDERS ON {pagenumber = } WITH {settings.PAGESIZE = }')
+                logger.info(f'got nonresidential tenders on {pagenumber = } with {settings.PAGESIZE = }')
                 tender = None
 
                 for entity in entities:
@@ -141,25 +137,34 @@ async def parse_nonresidential(
                             if _id := tender.get('id'):
                                 tenders_ids.append(str(_id))
                             else:
-                                print('-------- ERROR: no id in tender', tender)
+                                logger.error('No id in tender', tender)
                         tenders_images = await _parse_nonresidential(tenders_ids, search_fields)
                         tenders_images = models.TenderImages(**tenders_images)
                         asyncio.create_task(
                             process_images(
-                                basefolder='nonresidential2', 
+                                basefolder=settings.NONRESIDENTIAL_FOLDERNAME,
                                 tender_model=dbmodels.NonresidentialTenders,
                                 tenders_images=tenders_images, 
                                 tenders_ids=tenders_ids.copy()
                             )
                         )
-                        clean_folder('/src/reports')
-                        clean_folder('/src/jsons')
-                    except Exception:
-                        print('Error while parsing', tender)
-                        traceback.print_exc()
+                        # clean_folder('/src/reports')
+                        # clean_folder('/src/jsons')
+                        delete_files(
+                            folder='/src/reports',
+                            filesnames=tenders_ids,
+                            extension='.pdf'
+                        )
+                        delete_files(
+                            folder='/src/jsons',
+                            filesnames=tenders_ids,
+                            extension='.json'
+                        )
+                    except Exception as e:
+                        logger.exception(f'Exception while parsing {tender}')
                 pagenumber += 1
-                await asyncio.sleep(60 * 60)
-        except Exception:
-            traceback.print_exc()
+                await asyncio.sleep(60 * 5)
+        except Exception as e:
+            logger.exception(f'Exception while parsing')
             await asyncio.sleep(60)
 

@@ -4,7 +4,7 @@ from fastapi import FastAPI
 
 from app.api.v1.routes import router as v1_router
 from app.database.initdb import init_db
-from app.scheduled_tasks.parse import scheduler
+from app.scheduled_tasks.tenders import scheduler
 from app.src.utils import clean_folder
 
 
@@ -14,10 +14,10 @@ async def lifespan(
 ):
     clean_folder('/src/reports')
     clean_folder('/src/jsons')
+    await init_db()
     scheduler.start()
     for job in scheduler.get_jobs():
         job.modify(next_run_time=datetime.now())
-    await init_db()
     yield
 
 

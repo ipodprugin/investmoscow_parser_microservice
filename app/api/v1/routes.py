@@ -1,20 +1,20 @@
 import json
+import asyncio
 
-from datetime import datetime
-from dataclasses import dataclass
 from typing import Annotated
-
 from fastapi import (
     APIRouter, 
-    Depends, 
     Query,
     status, 
 )
 
 from app.api import models
+from app.api.v1.handlers import handler_delete_expired_tenders
 from app.database.session import get_db_session
-from app.database.handlers.tenders import db_get_tenders_by_ids, db_get_tender_by_id
-from app.redis_client import redis_client
+from app.database.handlers.tenders import (
+    db_get_tenders_by_ids, 
+    db_get_tender_by_id,
+)
 
 router = APIRouter(prefix="/v1", tags=["v1"])
 
@@ -24,11 +24,6 @@ async def get_tender_data_by_id(tender_id: str) -> models.NonresidentialDataOut 
     """ 
     Возвращает тендер по ID.
     """
-    async with redis_client.client() as conn:
-        cached_tender = await conn.get(tender_id)
-        if cached_tender:
-            return models.NonresidentialDataOut.model_validate(json.loads(cached_tender))
-
     async with get_db_session() as session:
         return await db_get_tender_by_id(session, tender_id)
 
@@ -50,6 +45,7 @@ async def get_tenders_by_ids(
     return rates_resp
 
 
-@router.delete("/tender", status_code=status.HTTP_200_OK)
+@router.delete("/tenders", status_code=status.HTTP_202_ACCEPTED)
 async def delete_expired_tenders():
-    ...
+    asyncio.create_task(handler_delete_expired_tenders())
+

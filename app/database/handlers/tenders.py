@@ -3,7 +3,10 @@ from ..session import get_db_session
 
 from app.api import models
 
+from datetime import datetime
+
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import delete
 from sqlalchemy.future import select
 from sqlalchemy.dialects.postgresql import insert
 
@@ -57,4 +60,14 @@ async def db_get_tenders_by_ids(
     tenders = await session.execute(tenders)
     if tenders:
         return [models.TenderOut.model_validate(tender) for tender in tenders]
+
+
+async def db_delete_expired_tenders(
+    session: AsyncSession, 
+    tender_model,
+) -> list[str]:
+    res = await session.execute(
+        delete(tender_model).where(tender_model.applications_enddate <= datetime.now()).returning(tender_model.tender_id)
+    )
+    return [tender_id[0] for tender_id in res]
 

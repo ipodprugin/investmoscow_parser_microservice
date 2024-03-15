@@ -161,3 +161,12 @@ async def process_images(basefolder: str, tender_model, tenders_images: TenderIm
         if images_links:
             await db_add_images_links(tender_model, images_links)
 
+
+async def del_folder(session: aiohttp.ClientSession, basefolder: str, tenders_ids: list[str]):
+    url = 'https://cloud-api.yandex.net/v1/disk/resources'
+    for tender_id in tenders_ids:
+        foldername = f'{basefolder}/{tender_id}'
+        params = {'path': foldername, 'permanently': 'true'}
+        async with session.delete(url, params=params) as response:
+            ...
+

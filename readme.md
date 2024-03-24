@@ -4,7 +4,6 @@
 - FastAPI
 - PostgreSQL
 - Docker
-- Redis
 
 ## Для запуска:
 

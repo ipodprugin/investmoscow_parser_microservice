@@ -6,7 +6,6 @@ services:
     build: .
     depends_on:
       - db
-      - redis
     command: bash -c 'uvicorn app.app:app --reload --host ${API_HOST} --port ${API_PORT}'
     volumes:
       - ./app:/src/app/
@@ -30,13 +29,3 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-
-  redis:
-    container_name: investmoscow_parser_redis
-    restart: unless-stopped
-    image: redis:alpine
-    ports:
-      - ${REDIS_PORT}:6379
-    env_file:
-      - .env
-

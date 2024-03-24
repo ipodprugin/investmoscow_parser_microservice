@@ -16,8 +16,6 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: SecretStr
     DB_PORT: int
 
-    REDIS_HOST: str
-    REDIS_PORT: int
     SSL: bool = False
 
     YADISK_OAUTH_TOKEN: str

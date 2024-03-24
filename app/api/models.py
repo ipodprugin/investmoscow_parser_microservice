@@ -10,46 +10,49 @@ from ..config import settings
 from datetime import datetime
 
 
-class FileBase(BaseModel):
+class BaseConfig(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, from_attributes=True)
+
+class FileBase(BaseConfig):
     name: str
 
 
-class HeaderInfo(BaseModel):
+class HeaderInfo(BaseConfig):
     address: str
 
 
-class AttachedImage(BaseModel):
+class AttachedImage(BaseConfig):
     tender_id: int = Field(..., alias='tenderId')
     is_main_photo: bool = Field(..., alias='isMainPhoto')
     url: str
     file_base: FileBase = Field(..., alias='fileBase')
 
 
-class ImageInfo(BaseModel):
+class ImageInfo(BaseConfig):
     attached_images: Annotated[List[AttachedImage], Field(alias='attachedImages')]
 
 
-class ObjectInfoItem(BaseModel):
+class ObjectInfoItem(BaseConfig):
     label: str
     value: str
 
 
-class ProcedureInfoItem(BaseModel):
+class ProcedureInfoItem(BaseConfig):
     label: str | None = None
     value: Annotated[str | None, Field(..., alias='value')] = None
     user_action: Annotated[str | None, Field(..., alias='userAction')] = None
 
 
-class Coords(BaseModel):
+class Coords(BaseConfig):
     lat: float = Field(..., alias='lat')
     lon: float = Field(..., alias='long')
 
 
-class MapInfoItem(BaseModel):
+class MapInfoItem(BaseConfig):
     coords: Optional[Coords] = Field(None, alias='coords')
 
 
-class BaseTender(BaseModel):
+class BaseTender(BaseConfig):
     tender_id: int = Field(..., alias='tenderId')
     url: Optional[str] = None
     region_name: Optional[str] = Field(None, alias='regionName')
@@ -69,7 +72,7 @@ class Tender(BaseTender):
     map_info: Optional[MapInfoItem] = Field(None, alias='mapInfo')
 
 
-class TenderDataFromFilesPayload(BaseModel):
+class TenderDataFromFilesPayload(BaseConfig):
     model_config = ConfigDict(populate_by_name=True, from_attributes=True)
 
     entrance_type: Annotated[str | None, Field(..., alias='Тип входа')] = None
@@ -87,23 +90,23 @@ class TenderOut(TenderDataFromFilesPayload):
 
 
 
-class SubwayStation(BaseModel):
+class SubwayStation(BaseConfig):
     subwayStationId: Annotated[int | None , Field(..., alias='subwayStationId')] = None
     subwayStationName: Annotated[str | None , Field(..., alias='subwayStationName')] = None
 
 
-class HeaderInfo2(BaseModel):
+class HeaderInfo2(BaseConfig):
     address: str
     subway: list[SubwayStation] | None = None
     land_area: Annotated[str, Field(alias='landArea')]
 
 
-class MapInfo(BaseModel):
+class MapInfo(BaseConfig):
     coords: Annotated[Coords | None, Field(..., alias='coords')] = None
     price: Annotated[float | None, Field(..., alias='price')] = None
 
 
-class TenderBase(BaseModel):
+class TenderBase(BaseConfig):
     tender_id: Annotated[int, Field(alias='tenderId')]
     image_info: Annotated[ImageInfo, Field(alias='imageInfo')]
     header_info: Annotated[HeaderInfo2, Field(alias='headerInfo')]
@@ -213,7 +216,7 @@ class NonresidentialDataValidate(TenderBase, TenderDataFromFilesPayload):
             return self.min_price / self.object_area
 
 
-class NonresidentialDataOut(BaseModel):
+class NonresidentialDataOut(BaseConfig):
     tender_id: str
     investmoscow_url: str | None = None
     address: str | None = None 
@@ -237,9 +240,10 @@ class NonresidentialDataOut(BaseModel):
     entrance_type: str | None = None
     windows: str | None = None
     ceilings: str | None = None
+    images_links: list[str] | None = None
 
 
-class ParkingSpacesDataOut(BaseModel):
+class ParkingSpacesDataOut(BaseConfig):
     tender_id: str
     investmoscow_url: str | None = None
     address: str | None = None 
@@ -255,6 +259,7 @@ class ParkingSpacesDataOut(BaseModel):
     parking_type: str | None = None
     parking_place: str | None = None
     count: int | None = None
+    images_links: list[str] | None = None
 
 
 class TenderTypes(IntEnum):
@@ -264,18 +269,18 @@ class TenderTypes(IntEnum):
 
 # Images
 
-class AttachedImageSnakeCase(BaseModel):
+class AttachedImageSnakeCase(BaseConfig):
     tender_id: Annotated[int, Field(alias='tender_id')]
     is_main_photo: Annotated[bool, Field(alias='is_main_photo')]
     url: str
     file_base: Annotated[FileBase, Field(alias='file_base')]
 
 
-class TenderImagesInfo(BaseModel):
+class TenderImagesInfo(BaseConfig):
     tender_id: Annotated[int, Field(alias='tender_id')]
     attached_images: Annotated[list[AttachedImageSnakeCase], Field(alias='attached_images')]
 
 
-class TenderImages(BaseModel):
+class TenderImages(BaseConfig):
     images: list[TenderImagesInfo]
 

@@ -2,17 +2,9 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from sqlalchemy import exc
-from sqlalchemy.ext.asyncio import (
-    AsyncSession,
-    async_sessionmaker,
-    create_async_engine,
-)
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
-
-
-engine = create_async_engine(settings.DB_URL)
-factory = async_sessionmaker(engine)
+from . import factory
 
 
 @asynccontextmanager

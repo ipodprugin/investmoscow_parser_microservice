@@ -6,8 +6,7 @@ from app.api import models
 from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import delete
-from sqlalchemy.future import select
+from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert
 
 
@@ -38,14 +37,16 @@ async def db_get_tender_by_id(
     session: AsyncSession, 
     tender_id: str,
 ) -> models.NonresidentialDataOut | None:
-    tender = select(
-        db_models.NonresidentialTenders,
-    ).where(
-        db_models.NonresidentialTenders.tender_id == tender_id
+    tender = await session.scalars(
+        select(
+            db_models.NonresidentialTenders,
+        ).where(
+            db_models.NonresidentialTenders.tender_id == tender_id
+        )
     )
-    tender = await session.execute(tender)
-    if tender:
-        return models.NonresidentialDataOut.model_validate(tender)
+    res = tender.first()
+    if res:
+        return models.NonresidentialDataOut.model_validate(res)
 
 
 async def db_get_tenders_by_ids(
@@ -57,7 +58,7 @@ async def db_get_tenders_by_ids(
     ).where(
         db_models.NonresidentialTenders.tender_id in tenders_ids if tenders_ids else True,
     )
-    tenders = await session.execute(tenders)
+    tenders = (await session.scalars(tenders)).all()
     if tenders:
         return [models.TenderOut.model_validate(tender) for tender in tenders]
 

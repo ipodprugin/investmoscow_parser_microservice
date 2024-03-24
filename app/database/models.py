@@ -1,4 +1,5 @@
 from datetime import datetime
+from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy import (
     String,
     Float,
@@ -9,7 +10,7 @@ from sqlalchemy import (
 )
 
 
-class Base(orm.DeclarativeBase):
+class Base(AsyncAttrs, orm.DeclarativeBase):
     pass
 
 

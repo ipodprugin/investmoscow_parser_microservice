@@ -1,6 +1,7 @@
 import asyncio
 
 from typing import Annotated
+from enum import Enum
 from fastapi import (
     APIRouter, 
     Query,
@@ -12,10 +13,16 @@ from app.api.v1.handlers import handler_delete_expired_tenders
 from app.database.session import get_db_session
 from app.database.handlers.tenders import (
     db_get_tenders_by_ids, 
+    db_get_tenders_by_address,
     db_get_tender_by_id,
 )
 
 router = APIRouter(prefix="/v1", tags=["v1"])
+
+
+class ByEnum(str, Enum):
+    tender_id = 'tender_id'
+    address = 'address'
 
 
 @router.get("/tender/{tender_id}", status_code=status.HTTP_200_OK)
@@ -29,19 +36,22 @@ async def get_tender_data_by_id(tender_id: str) -> models.NonresidentialDataOut 
 
 @router.get("/tenders", status_code=status.HTTP_200_OK)
 async def get_tenders_by_ids(
-    tenders_ids: Annotated[list[str] | None, Query()] = None
-) -> list[models.TenderOut] | None:
+    params: Annotated[list[str], Query(description="List of tenders ids of addresses")],
+    by: ByEnum,
+) -> list[models.NonresidentialDataOut] | None:
     """ 
-    Возвращает тендеры по ID.
+    Возвращает тендеры по ID или адресу.
     """
-    rates_resp = {}
     async with get_db_session() as session:
-        rates = await db_get_tenders_by_ids(
+        if by == ByEnum.tender_id.value:
+            return await db_get_tenders_by_ids(
+                session, 
+                params,
+            )
+        return await db_get_tenders_by_address(
             session, 
-            tenders_ids,
+            params,
         )
-        rates_resp = rates
-    return rates_resp
 
 
 @router.delete("/tenders", status_code=status.HTTP_202_ACCEPTED)

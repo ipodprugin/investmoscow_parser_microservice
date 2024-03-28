@@ -148,8 +148,6 @@ async def parse_nonresidential(
                                 tenders_ids=tenders_ids.copy()
                             )
                         )
-                        # clean_folder('/src/reports')
-                        # clean_folder('/src/jsons')
                         delete_files(
                             folder='/src/reports',
                             filesnames=tenders_ids,

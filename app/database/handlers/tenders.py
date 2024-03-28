@@ -51,16 +51,30 @@ async def db_get_tender_by_id(
 
 async def db_get_tenders_by_ids(
     session: AsyncSession, 
-    tenders_ids: list[str] | None = None,
-) -> list[models.TenderOut] | None:
+    tenders_ids: list[str],
+) -> list[models.NonresidentialDataOut] | None:
     tenders = select(
         db_models.NonresidentialTenders,
     ).where(
-        db_models.NonresidentialTenders.tender_id in tenders_ids if tenders_ids else True,
+        db_models.NonresidentialTenders.tender_id.in_(tenders_ids)
     )
     tenders = (await session.scalars(tenders)).all()
     if tenders:
-        return [models.TenderOut.model_validate(tender) for tender in tenders]
+        return [models.NonresidentialDataOut.model_validate(tender) for tender in tenders]
+
+
+async def db_get_tenders_by_address(
+    session: AsyncSession, 
+    address_ids: list[str],
+) -> list[models.NonresidentialDataOut] | None:
+    tenders = select(
+        db_models.NonresidentialTenders,
+    ).where(
+        db_models.NonresidentialTenders.address.in_(address_ids)
+    )
+    tenders = (await session.scalars(tenders)).all()
+    if tenders:
+        return [models.NonresidentialDataOut.model_validate(tender) for tender in tenders]
 
 
 async def db_delete_expired_tenders(

@@ -44,5 +44,6 @@ class Settings(BaseSettings):
         'Муниципальный район',
     ]
 
+
 settings = Settings()
 

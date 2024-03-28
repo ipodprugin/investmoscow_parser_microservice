@@ -242,6 +242,10 @@ class NonresidentialDataOut(BaseConfig):
     ceilings: str | None = None
     images_links: list[str] | None = None
 
+    @computed_field
+    def imgzippath(self) -> str:
+        return f'app:/{settings.NONRESIDENTIAL_FOLDERNAME}/{self.tender_id}'
+
 
 class ParkingSpacesDataOut(BaseConfig):
     tender_id: str

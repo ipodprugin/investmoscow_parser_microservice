@@ -74,7 +74,7 @@ async def _parse_nonresidential(
     file_data = await find_fields(tender_ids=list(file_data.keys()), search_fields=search_fields)
     for tender_id, tender in tenders.items():
         _file_data = file_data.get(tender_id)
-        tenders[tender_id] = models.NonresidentialDataOut(
+        tenders[tender_id] = models.NonresidentialDataDB(
             tender_id=str(tender.tender_id),
             investmoscow_url=tender.investmoscow_url,
             address=tender.header_info.address,

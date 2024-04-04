@@ -9,4 +9,5 @@ ADD requirements.txt requirements.txt
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
 COPY app ./app
+ADD service_account_secret.json service_account_secret.json
 

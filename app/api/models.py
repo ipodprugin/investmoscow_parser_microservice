@@ -1,24 +1,18 @@
-from pydantic import BaseModel, Field, ConfigDict, field_validator, computed_field
+from pydantic import BaseModel, Field, ConfigDict, computed_field
 from typing_extensions import Annotated
-
-from typing import List, Optional
-
+from typing import List
 from enum import IntEnum
+from datetime import datetime
 
 from ..config import settings
-
-from datetime import datetime
 
 
 class BaseConfig(BaseModel):
     model_config = ConfigDict(populate_by_name=True, from_attributes=True)
 
+
 class FileBase(BaseConfig):
     name: str
-
-
-class HeaderInfo(BaseConfig):
-    address: str
 
 
 class AttachedImage(BaseConfig):
@@ -48,30 +42,6 @@ class Coords(BaseConfig):
     lon: float = Field(..., alias='long')
 
 
-class MapInfoItem(BaseConfig):
-    coords: Optional[Coords] = Field(None, alias='coords')
-
-
-class BaseTender(BaseConfig):
-    tender_id: int = Field(..., alias='tenderId')
-    url: Optional[str] = None
-    region_name: Optional[str] = Field(None, alias='regionName')
-    district_name: Optional[str] = Field(None, alias='districtName')
-    object_area: Optional[float] = Field(None, alias='objectArea')
-    start_price: Optional[float] = Field(None, alias='startPrice')
-    request_end_date: Optional[str] = Field(None, alias='requestEndDate')
-
-
-class Tender(BaseTender):
-    image_info: Optional[ImageInfo] = Field(None, alias='imageInfo')
-    header_info: Optional[HeaderInfo] = Field(None, alias='headerInfo')
-    object_info: Optional[List[ObjectInfoItem]] = Field(None, alias='objectInfo')
-    procedure_info: Optional[List[ProcedureInfoItem]] = Field(
-        None, alias='procedureInfo'
-    )
-    map_info: Optional[MapInfoItem] = Field(None, alias='mapInfo')
-
-
 class TenderDataFromFilesPayload(BaseConfig):
     model_config = ConfigDict(populate_by_name=True, from_attributes=True)
 
@@ -80,14 +50,6 @@ class TenderDataFromFilesPayload(BaseConfig):
     ceilings: Annotated[str | None, Field(..., alias='Высота потолков, м')] = None
     region_name: Annotated[str | None, Field(..., alias='Округ города Москвы')] = None
     district_name: Annotated[str | None, Field(..., alias='Муниципальный район')] = None
-
-
-class TenderOut(TenderDataFromFilesPayload):
-    tender_id: str = Field(alias='tender_id')
-
-
-# -----------------------------------------------------------------------------------------
-
 
 
 class SubwayStation(BaseConfig):
@@ -216,31 +178,34 @@ class NonresidentialDataValidate(TenderBase, TenderDataFromFilesPayload):
             return self.min_price / self.object_area
 
 
-class NonresidentialDataOut(BaseConfig):
-    tender_id: str
-    investmoscow_url: str | None = None
-    address: str | None = None 
-    subway_stations: str | None = None 
-    region_name: str | None = None 
-    district_name: str | None = None 
-    object_area: float | None = None
-    floor: str | None = None
-    applications_enddate: datetime | None = None
-    deposit: float | None = None
-    start_price: float | None = None 
-    m1_start_price: float | None = None
-    min_price: float | None = None
-    m1_min_price: float | None = None
-    procedure_form: str | None = None
-    auction_step: float | None = None
-    price_decrease_step: float | None = None
-    tendering: datetime | None = None
-    lat: float | None = None
-    lon: float | None = None
-    entrance_type: str | None = None
-    windows: str | None = None
-    ceilings: str | None = None
-    images_links: list[str] | None = None
+class NonresidentialDataDB(BaseConfig):
+    tender_id: Annotated[str, Field(description='tender_id')]
+    investmoscow_url: Annotated[str | None, Field(..., description='Сылка на investmoscow')] = None
+    address: Annotated[str | None, Field(..., description='Адрес')] = None 
+    region_name: Annotated[str | None, Field(..., description='Округ')] = None 
+    district_name: Annotated[str | None, Field(..., description='Район')] = None 
+    subway_stations: Annotated[str | None, Field(..., description='Метро')] = None 
+    object_area: Annotated[float | None, Field(..., description='Площадь')] = None
+    floor: Annotated[str | None, Field(..., description='Этаж')] = None
+    applications_enddate: Annotated[datetime | None, Field(..., description='Дата окончания приема заявок')] = None
+    deposit: Annotated[float | None, Field(..., description='Задаток')] = None
+    start_price: Annotated[float | None, Field(..., description='Начальная цена')] = None 
+    m1_start_price: Annotated[float | None, Field(..., description='')] = None
+    min_price: Annotated[float | None, Field(..., description='Минимальная цена')] = None
+    m1_min_price: Annotated[float | None, Field(..., description='')] = None
+    procedure_form: Annotated[str | None, Field(..., description='Форма')] = None
+    auction_step: Annotated[float | None, Field(..., description='Шаг аукциона')] = None
+    price_decrease_step: Annotated[float | None, Field(..., description='Шаг понижения цены')] = None
+    tendering: Annotated[datetime | None, Field(..., description='Проведение торгов')] = None
+    lat: Annotated[float | None, Field(..., description='Широта')] = None
+    lon: Annotated[float | None, Field(..., description='Долгота')] = None
+    entrance_type: Annotated[str | None, Field(..., description='Тип входа')] = None
+    windows: Annotated[str | None, Field(..., description='Окна')] = None
+    ceilings: Annotated[str | None, Field(..., description='Потолки')] = None
+    images_links: Annotated[list[str] | None, Field(..., description='Ссылки на изображения (для авито)')] = None
+
+
+class NonresidentialDataOut(NonresidentialDataDB):
 
     @computed_field
     def imgzippath(self) -> str:
@@ -270,8 +235,6 @@ class TenderTypes(IntEnum):
     parking_space = 30011578
     nonresidential = 30011569
 
-
-# Images
 
 class AttachedImageSnakeCase(BaseConfig):
     tender_id: Annotated[int, Field(alias='tender_id')]

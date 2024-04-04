@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     PARKING_SPACES_FOLDERNAME: str = 'parking_spaces'
     NONRESIDENTIAL_FOLDERNAME: str = 'nonresidential'
 
+    GSHEETS_CREDS_PATH: str = 'service_account_secret.json'
+    GSHEETURL: str
+    NONRESIDENTIAL_WORKSHEET_TITLE: str
+    PARKING_SPACES_WORKSHEET_TITLE: str
+
     # defaults
     DB_URL: str
 

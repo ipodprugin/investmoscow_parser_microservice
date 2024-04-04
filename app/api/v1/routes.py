@@ -9,13 +9,16 @@ from fastapi import (
 )
 
 from app.api import models
-from app.api.v1.handlers import handler_delete_expired_tenders
+from app.config import settings
+from app.api.v1.handlers import handler_delete_expired_tenders, update_google_sheet_data
 from app.database.session import get_db_session
+from app.database.models import NonresidentialTenders, ParkingSpacesTenders
 from app.database.handlers.tenders import (
     db_get_tenders_by_ids, 
     db_get_tenders_by_address,
     db_get_tender_by_id,
 )
+
 
 router = APIRouter(prefix="/v1", tags=["v1"])
 
@@ -57,4 +60,20 @@ async def get_tenders_by_ids(
 @router.delete("/tenders", status_code=status.HTTP_202_ACCEPTED)
 async def delete_expired_tenders():
     asyncio.create_task(handler_delete_expired_tenders())
+
+
+@router.patch("/update-google-sheet", status_code=status.HTTP_200_OK)
+async def get_tenders(worksheet: str):
+    """ 
+    Возвращает тендер по ID.
+    """
+    db_models = {
+        settings.NONRESIDENTIAL_WORKSHEET_TITLE: {
+            'db_model': NonresidentialTenders, 
+        },
+        settings.PARKING_SPACES_WORKSHEET_TITLE: {
+            'db_model': ParkingSpacesTenders, 
+        },
+    }
+    return await update_google_sheet_data(db_models[worksheet]['db_model'], worksheet)
 

@@ -5,7 +5,7 @@ from ..session import get_db_session
 from app.api import models
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, text
 from sqlalchemy.dialects.postgresql import insert
 
 
@@ -86,15 +86,7 @@ async def db_delete_expired_tenders(
     return [tender_id[0] for tender_id in res]
 
 
-def pandas_query(session, db_model):
-  conn = session.connection()
-  query = select(db_model)
-  return pd.read_sql_query(query, conn)
-
-
-from sqlalchemy import text
-
-async def db_get_all_tenders_of_type_as_pandas_df(
+async def db_get_table_columns_descriptions(
     session: AsyncSession, 
     db_model,
 ):
@@ -105,8 +97,20 @@ async def db_get_all_tenders_of_type_as_pandas_df(
     )
     columns_descriptions = await session.execute(sql)
     columns_descriptions = columns_descriptions.all()
-    table_headers_for_rename = {old_name: new_name for old_name, new_name in columns_descriptions}
+    table_columns_descriptions = {column_name: column_description for column_name, column_description in columns_descriptions}
+    return table_columns_descriptions
+
+
+def pandas_query(session, db_model):
+  conn = session.connection()
+  query = select(db_model)
+  return pd.read_sql_query(query, conn)
+
+
+async def db_get_all_tenders_of_type_as_pandas_df(
+    session: AsyncSession, 
+    db_model,
+):
     df = await session.run_sync(pandas_query, db_model=db_model)
-    df = df.rename(columns=table_headers_for_rename)
     return df
 
